@@ -34,12 +34,12 @@ export default function App() {
   const [showRequestModal, setShowRequestModal] = useState<RequestType | null>(null);
 
   // Simulated Login
-  useEffect(() => {
-    // Basic auto-login for demo purposes
-    if (!user) {
-      setUser(MOCK_USERS[0]); // Default to Employee
-    }
-  }, []);
+  // useEffect(() => {
+  //   // Basic auto-login for demo purposes
+  //   if (!user) {
+  //     setUser(MOCK_USERS[0]); // Default to Employee
+  //   }
+  // }, []);
 
   const handleLogout = () => setUser(null);
 
