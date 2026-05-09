@@ -1,6 +1,6 @@
-import React from 'react';
-import { motion } from 'motion/react';
-import { Building2, ShieldCheck, UserCircle, Briefcase, Sparkles } from 'lucide-react';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Building2, ShieldCheck, UserCircle, Briefcase, Lock, User as UserIcon, ArrowLeft } from 'lucide-react';
 import { UserRole } from '../../types';
 
 interface LoginViewProps {
@@ -8,13 +8,17 @@ interface LoginViewProps {
 }
 
 export const LoginView = ({ onLogin }: LoginViewProps) => {
+  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
       transition: {
         staggerChildren: 0.1,
-        delayChildren: 0.3
+        delayChildren: 0.1
       }
     }
   };
@@ -22,6 +26,13 @@ export const LoginView = ({ onLogin }: LoginViewProps) => {
   const itemVariants = {
     hidden: { y: 20, opacity: 0 },
     visible: { y: 0, opacity: 1 }
+  };
+
+  const handleLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedRole) {
+      onLogin(selectedRole);
+    }
   };
 
   return (
@@ -96,45 +107,126 @@ export const LoginView = ({ onLogin }: LoginViewProps) => {
         className="max-w-sm w-full relative z-10"
       >
         <motion.div
-          variants={itemVariants}
+          layout
           className="bg-white/80 backdrop-blur-xl rounded-[2rem] shadow-2xl shadow-brand-500/10 p-8 border border-white/50"
         >
-          <div className="text-center mb-8">
-            <motion.div 
-              whileHover={{ scale: 1.05, rotate: 5 }}
-              className="w-16 h-16 bg-brand-600 rounded-[1.5rem] flex items-center justify-center mx-auto mb-5 text-white shadow-xl shadow-brand-600/30"
-            >
-              <Building2 className="w-8 h-8" />
-            </motion.div>
-            <h1 className="text-3xl font-display font-black text-slate-900 tracking-tight">
-              AVARIS
-            </h1>
-            <p className="text-slate-500 mt-2 text-sm font-medium leading-relaxed">
-              Manage your professional requests in one place.
-            </p>
-          </div>
+          <AnimatePresence mode="wait">
+            {!selectedRole ? (
+              <motion.div
+                key="role-selection"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="text-center mb-8">
+                  <motion.div 
+                    whileHover={{ scale: 1.05, rotate: 5 }}
+                    className="w-16 h-16 bg-brand-600 rounded-[1.5rem] flex items-center justify-center mx-auto mb-5 text-white shadow-xl shadow-brand-600/30"
+                  >
+                    <Building2 className="w-8 h-8" />
+                  </motion.div>
+                  <h1 className="text-3xl font-display font-black text-slate-900 tracking-tight">
+                    AVARIS
+                  </h1>
+                  <p className="text-slate-500 mt-2 text-sm font-medium leading-relaxed">
+                    Choose your role to continue.
+                  </p>
+                </div>
 
-          <div className="space-y-4">
-            <LoginButton 
-              onClick={() => onLogin('employee')} 
-              icon={UserCircle} 
-              label="Login as Employee" 
-              description="Request leave, overtime & more"
-              primary
-            />
-            <LoginButton 
-              onClick={() => onLogin('manager')} 
-              icon={Briefcase} 
-              label="Login as Manager" 
-              description="Review and approve requests"
-            />
-            <LoginButton 
-              onClick={() => onLogin('admin')} 
-              icon={ShieldCheck} 
-              label="Login as Admin" 
-              description="System management & reporting"
-            />
-          </div>
+                <div className="space-y-4">
+                  <LoginButton 
+                    onClick={() => setSelectedRole('employee')} 
+                    icon={UserCircle} 
+                    label="Employee" 
+                    description="Request leave, overtime & more"
+                    primary
+                  />
+                  <LoginButton 
+                    onClick={() => setSelectedRole('manager')} 
+                    icon={Briefcase} 
+                    label="Manager" 
+                    description="Review and approve requests"
+                  />
+                  <LoginButton 
+                    onClick={() => setSelectedRole('admin')} 
+                    icon={ShieldCheck} 
+                    label="Admin" 
+                    description="System management & reporting"
+                  />
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="login-form"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+              >
+                <button 
+                  onClick={() => setSelectedRole(null)}
+                  className="flex items-center gap-2 text-slate-400 hover:text-brand-600 transition-colors mb-6 font-bold text-sm"
+                >
+                  <ArrowLeft className="w-4 h-4" /> Back to roles
+                </button>
+
+                <div className="mb-8">
+                  <h2 className="text-2xl font-display font-black text-slate-900 tracking-tight capitalize">
+                    {selectedRole} Login
+                  </h2>
+                  <p className="text-slate-500 mt-1 text-sm font-medium">
+                    Please enter your credentials below.
+                  </p>
+                </div>
+
+                <form onSubmit={handleLoginSubmit} className="space-y-5">
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Username</label>
+                    <div className="relative group">
+                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition-colors">
+                        <UserIcon className="w-5 h-5" />
+                      </div>
+                      <input 
+                        type="text" 
+                        required
+                        className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-transparent focus:border-brand-500/20 focus:bg-white rounded-2xl outline-none transition-all font-bold text-slate-700 placeholder:text-slate-300"
+                        placeholder="username"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Password</label>
+                    <div className="relative group">
+                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition-colors">
+                        <Lock className="w-5 h-5" />
+                      </div>
+                      <input 
+                        type="password" 
+                        required
+                        className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-transparent focus:border-brand-500/20 focus:bg-white rounded-2xl outline-none transition-all font-bold text-slate-700 placeholder:text-slate-300"
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <motion.button
+                    whileHover={{ scale: 1.02, y: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    type="submit"
+                    className="w-full py-4 bg-brand-600 text-white rounded-2xl font-black shadow-xl shadow-brand-600/30 hover:bg-brand-700 transition-all mt-4"
+                  >
+                    Login to Dashboard
+                  </motion.button>
+                </form>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <motion.div 
             variants={itemVariants}
@@ -149,6 +241,7 @@ export const LoginView = ({ onLogin }: LoginViewProps) => {
     </div>
   );
 };
+
 
 interface LoginButtonProps {
   onClick: () => void;
