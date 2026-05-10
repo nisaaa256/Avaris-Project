@@ -8,7 +8,7 @@ import { AnimatePresence } from 'motion/react';
 
 // Types and Mock Data
 import { User, AppRequest, UserRole, RequestType } from './types';
-import { MOCK_USERS, MOCK_REQUESTS } from './mockData';
+import { apiService } from './services/api';
 
 // Layout Components
 import { Sidebar } from './components/layout/Sidebar';
@@ -27,44 +27,142 @@ import { ProfileView } from './components/views/ProfileView';
 import { RequestModal } from './components/modals/RequestModal';
 
 export default function App() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    const saved = localStorage.getItem('user');
+    return saved ? JSON.parse(saved) : null;
+  });
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [requests, setRequests] = useState<AppRequest[]>(MOCK_REQUESTS);
+  const [requests, setRequests] = useState<AppRequest[]>([]);
+  const [employees, setEmployees] = useState<User[]>([]);
   const [showRequestModal, setShowRequestModal] = useState<RequestType | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Simulated Login
-  // useEffect(() => {
-  //   // Basic auto-login for demo purposes
-  //   if (!user) {
-  //     setUser(MOCK_USERS[0]); // Default to Employee
-  //   }
-  // }, []);
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('user', JSON.stringify(user));
+      fetchRequests();
+      if (user.role === 'admin') {
+        fetchEmployees();
+      }
+    } else {
+      localStorage.removeItem('user');
+    }
+  }, [user]);
 
-  const handleLogout = () => setUser(null);
-
-  const handleLogin = (role: UserRole) => {
-    const foundUser = MOCK_USERS.find(u => u.role === role);
-    if (foundUser) setUser(foundUser);
+  const fetchRequests = async () => {
+    try {
+      const data = await apiService.getRequests();
+      setRequests(data);
+    } catch (error) {
+      console.error('Fetch error:', error);
+      if (error instanceof Error && error.message.includes('401')) {
+        handleLogout();
+      }
+    }
   };
 
-  const addRequest = (newRequest: any) => {
-    const req: AppRequest = {
-      ...newRequest,
-      id: `req-${Date.now()}`,
-      userId: user?.id || '1',
-      userName: user?.name || 'User',
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-    };
-    setRequests([req, ...requests]);
-    setShowRequestModal(null);
+  const fetchEmployees = async () => {
+    try {
+      const data = await apiService.getUsers();
+      setEmployees(data);
+    } catch (error) {
+      console.error('Fetch error:', error);
+    }
   };
 
-  const updateRequestStatus = (id: string, status: 'approved' | 'rejected', comment?: string) => {
-    setRequests(requests.map(r =>
-      r.id === id ? { ...r, status, managerComment: comment, updatedAt: new Date().toISOString() } : r
-    ));
+  const handleAddEmployee = async (newEmp: any) => {
+    try {
+      await apiService.createUser({
+        username: newEmp.username || newEmp.name.toLowerCase().replace(/\s/g, ''),
+        first_name: newEmp.name.split(' ')[0],
+        last_name: newEmp.name.split(' ').slice(1).join(' '),
+        password: newEmp.password || 'password123',
+        is_staff: newEmp.role === 'manager' || newEmp.role === 'admin',
+        is_superuser: newEmp.role === 'admin',
+      });
+      fetchEmployees();
+    } catch (error) {
+      alert('Failed to create employee');
+    }
+  };
+
+  const handleUpdateEmployee = async (id: number | string, updatedData: any) => {
+    try {
+      const payload: any = {
+        first_name: updatedData.name.split(' ')[0],
+        last_name: updatedData.name.split(' ').slice(1).join(' '),
+        is_staff: updatedData.role === 'manager' || updatedData.role === 'admin',
+        is_superuser: updatedData.role === 'admin',
+      };
+      if (updatedData.password) {
+        payload.password = updatedData.password;
+      }
+      await apiService.updateUser(id, payload);
+      fetchEmployees();
+    } catch (error) {
+      alert('Failed to update employee');
+    }
+  };
+
+  const handleUpdateProfile = async (updatedData: any) => {
+    if (!user) return;
+    try {
+      const payload: any = {
+        email: updatedData.email,
+        first_name: updatedData.name.split(' ')[0],
+        last_name: updatedData.name.split(' ').slice(1).join(' '),
+      };
+      if (updatedData.password) {
+        payload.password = updatedData.password;
+      }
+      
+      const updatedUser = await apiService.updateProfile(user.id, payload);
+      const newUser = {
+        ...user,
+        name: updatedUser.name,
+        email: updatedUser.email,
+      };
+      setUser(newUser);
+      localStorage.setItem('user', JSON.stringify(newUser));
+      alert('Profile updated successfully');
+    } catch (error) {
+      alert('Failed to update profile');
+    }
+  };
+
+
+  const handleLogout = () => {
+    setUser(null);
+    apiService.clearToken();
+  };
+
+  const handleLogin = async (username, password) => {
+    try {
+      const userData = await apiService.login(username, password);
+      setUser(userData);
+    } catch (error) {
+      alert('Login failed. Please check your credentials.');
+    }
+  };
+
+  const addRequest = async (newRequest: any) => {
+    try {
+      const created = await apiService.createRequest(newRequest);
+      setRequests([created, ...requests]);
+      setShowRequestModal(null);
+    } catch (error) {
+      alert('Failed to submit request');
+    }
+  };
+
+  const updateRequestStatus = async (id: string, status: 'approved' | 'rejected', comment?: string) => {
+    try {
+      const updated = await apiService.updateRequestStatus(id, status, comment);
+      setRequests(requests.map(r => r.id === id ? updated : r));
+    } catch (error) {
+      alert('Failed to update request');
+    }
   };
 
   if (!user) {
@@ -105,6 +203,7 @@ export default function App() {
             )}
             {activeTab === 'requests' && (
               <RequestsView
+                user={user}
                 requests={filteredRequests}
                 onNewRequest={setShowRequestModal}
               />
@@ -115,9 +214,16 @@ export default function App() {
                 onUpdate={updateRequestStatus}
               />
             )}
-            {activeTab === 'employees' && <EmployeesAdminView />}
+            {activeTab === 'employees' && (
+              <EmployeesAdminView 
+                employees={employees} 
+                onRefresh={fetchEmployees} 
+                onAddEmployee={handleAddEmployee}
+                onUpdateEmployee={handleUpdateEmployee}
+              />
+            )}
             {activeTab === 'reports' && <ReportsAdminView requests={requests} />}
-            {activeTab === 'profile' && <ProfileView user={user} />}
+            {activeTab === 'profile' && <ProfileView user={user} onUpdate={handleUpdateProfile} />}
           </div>
         </div>
       </main>

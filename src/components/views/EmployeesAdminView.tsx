@@ -1,30 +1,46 @@
 import React, { useState } from 'react';
 import { Plus, X, UserPlus, Mail, Briefcase, Building, Shield } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MOCK_USERS } from '../../mockData';
-import { UserRole } from '../../types';
+import { User, UserRole } from '../../types';
 
-export const EmployeesAdminView = () => {
-  const [employees, setEmployees] = useState(MOCK_USERS);
+interface EmployeesAdminViewProps {
+  employees: User[];
+  onRefresh: () => void;
+  onAddEmployee: (emp: any) => void;
+  onUpdateEmployee: (id: number | string, emp: any) => void;
+}
+
+export const EmployeesAdminView = ({ employees, onRefresh, onAddEmployee, onUpdateEmployee }: EmployeesAdminViewProps) => {
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     department: 'Engineering',
     role: 'employee' as UserRole,
+    password: '',
   });
 
-  const handleAddEmployee = (e: React.FormEvent) => {
+  const handleOpenEdit = (user: User) => {
+    setEditingUser(user);
+    setFormData({
+      name: user.name,
+      department: 'Engineering', // We don't have this in real data yet, but keep it for UI
+      role: user.role,
+      password: '',
+    });
+    setShowAddModal(true);
+  };
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newEmp = {
-      id: (employees.length + 1).toString(),
-      name: formData.name,
-      role: formData.role,
-      department: formData.department,
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${formData.name}`,
-    };
-    setEmployees([...employees, newEmp]);
+    if (editingUser) {
+      await onUpdateEmployee(editingUser.id, formData);
+    } else {
+      await onAddEmployee(formData);
+    }
     setShowAddModal(false);
-    setFormData({ name: '', department: 'Engineering', role: 'employee' });
+    setEditingUser(null);
+    setFormData({ name: '', department: 'Engineering', role: 'employee', password: '' });
   };
 
   return (
@@ -66,7 +82,7 @@ export const EmployeesAdminView = () => {
                   <img src={emp.avatar} className="w-10 h-10 rounded-xl bg-brand-50 border border-brand-100 p-0.5" alt="" />
                   <span className="font-bold text-slate-700 group-hover:text-brand-600 transition-colors">{emp.name}</span>
                 </td>
-                <td className="px-8 py-5 text-sm font-mono text-slate-400">AVR-{emp.id.padStart(3, '0')}</td>
+                <td className="px-8 py-5 text-sm font-mono text-slate-400">AVR-{String(emp.id).padStart(3, '0')}</td>
                 <td className="px-8 py-5 text-sm font-medium text-slate-500">{emp.department}</td>
                 <td className="px-8 py-5">
                   <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
@@ -78,7 +94,12 @@ export const EmployeesAdminView = () => {
                   </span>
                 </td>
                 <td className="px-8 py-5 text-right">
-                  <button className="text-slate-400 hover:text-brand-600 font-bold text-sm transition-colors">Edit</button>
+                  <button 
+                    onClick={() => handleOpenEdit(emp)}
+                    className="text-slate-400 hover:text-brand-600 font-bold text-sm transition-colors"
+                  >
+                    Edit
+                  </button>
                 </td>
               </motion.tr>
             ))}
@@ -101,16 +122,22 @@ export const EmployeesAdminView = () => {
                     <UserPlus className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-display font-bold">New Employee</h3>
-                    <p className="text-brand-200 text-sm font-medium">Add a new member to your team.</p>
+                    <h3 className="text-2xl font-display font-bold">{editingUser ? 'Edit Employee' : 'New Employee'}</h3>
+                    <p className="text-brand-200 text-sm font-medium">{editingUser ? 'Update account details.' : 'Add a new member to your team.'}</p>
                   </div>
                 </div>
-                <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
+                <button 
+                  onClick={() => {
+                    setShowAddModal(false);
+                    setEditingUser(null);
+                  }} 
+                  className="p-2 hover:bg-white/10 rounded-xl transition-colors"
+                >
                   <X className="w-6 h-6" />
                 </button>
               </div>
 
-              <form className="p-8 space-y-6" onSubmit={handleAddEmployee}>
+              <form className="p-8 space-y-6" onSubmit={handleFormSubmit}>
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
                     <Building className="w-4 h-4 text-brand-500" /> Full Name
@@ -122,6 +149,20 @@ export const EmployeesAdminView = () => {
                     className="input-field" 
                     value={formData.name}
                     onChange={e => setFormData({ ...formData, name: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-brand-500" /> {editingUser ? 'New Password (Optional)' : 'Password'}
+                  </label>
+                  <input 
+                    type="password" 
+                    required={!editingUser}
+                    placeholder={editingUser ? 'Leave blank to keep current' : '••••••••'}
+                    className="input-field" 
+                    value={formData.password}
+                    onChange={e => setFormData({ ...formData, password: e.target.value })}
                   />
                 </div>
 
@@ -170,7 +211,7 @@ export const EmployeesAdminView = () => {
                     type="submit"
                     className="flex-1 py-4 px-6 rounded-2xl font-black bg-brand-600 text-white shadow-xl shadow-brand-600/30 hover:bg-brand-700 transition-all"
                   >
-                    Create User
+                    {editingUser ? 'Update User' : 'Create User'}
                   </button>
                 </div>
               </form>

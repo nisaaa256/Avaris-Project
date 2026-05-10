@@ -1,17 +1,21 @@
 import React, { useState } from 'react';
 import { Plus } from 'lucide-react';
-import { AppRequest, RequestType } from '../../types';
+import { User, AppRequest, RequestType } from '../../types';
 import { StatusBadge } from '../common/StatusBadge';
+import { ViewRequestModal } from '../modals/ViewRequestModal';
 
 interface RequestsViewProps {
+  user: User;
   requests: AppRequest[];
   onNewRequest: (type: RequestType) => void;
 }
 
-export const RequestsView = ({ requests, onNewRequest }: RequestsViewProps) => {
+export const RequestsView = ({ user, requests, onNewRequest }: RequestsViewProps) => {
   const [filter, setFilter] = useState('all');
+  const [selectedRequest, setSelectedRequest] = useState<AppRequest | null>(null);
 
   const filtered = filter === 'all' ? requests : requests.filter(r => r.type === filter);
+
 
   return (
     <div className="space-y-6">
@@ -39,6 +43,7 @@ export const RequestsView = ({ requests, onNewRequest }: RequestsViewProps) => {
           <thead>
             <tr className="bg-brand-50 border-b border-brand-100">
               <th className="px-6 py-4 text-xs font-bold text-text-muted uppercase tracking-widest">Type</th>
+              {user.role !== 'employee' && <th className="px-6 py-4 text-xs font-bold text-text-muted uppercase tracking-widest">Employee</th>}
               <th className="px-6 py-4 text-xs font-bold text-text-muted uppercase tracking-widest">Date Logged</th>
               <th className="px-6 py-4 text-xs font-bold text-text-muted uppercase tracking-widest">Status</th>
               <th className="px-6 py-4 text-xs font-bold text-text-muted uppercase tracking-widest">Updated</th>
@@ -58,6 +63,7 @@ export const RequestsView = ({ requests, onNewRequest }: RequestsViewProps) => {
                     </span>
                   </div>
                 </td>
+                {user.role !== 'employee' && <td className="px-6 py-4 text-sm font-bold text-slate-700">{req.userName}</td>}
                 <td className="px-6 py-4 text-sm font-medium text-text-main">
                   {new Date(req.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </td>
@@ -68,7 +74,12 @@ export const RequestsView = ({ requests, onNewRequest }: RequestsViewProps) => {
                   {req.updatedAt ? new Date(req.updatedAt).toLocaleDateString() : '-'}
                 </td>
                 <td className="px-6 py-4 text-right">
-                  <button className="text-brand-600 hover:underline font-bold text-sm">Review</button>
+                  <button 
+                    onClick={() => setSelectedRequest(req)}
+                    className="text-brand-600 hover:underline font-bold text-sm"
+                  >
+                    Review
+                  </button>
                 </td>
               </tr>
             ))}
@@ -80,6 +91,11 @@ export const RequestsView = ({ requests, onNewRequest }: RequestsViewProps) => {
           </div>
         )}
       </div>
+
+      <ViewRequestModal 
+        request={selectedRequest} 
+        onClose={() => setSelectedRequest(null)} 
+      />
     </div>
   );
 };

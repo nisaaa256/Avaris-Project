@@ -4,6 +4,7 @@ import { Plus, Calendar, DollarSign, Clock, FileText, Building2, CheckCircle2 } 
 import { User, AppRequest, RequestType } from '../../types';
 import { StatCard } from '../common/StatCard';
 import { StatusBadge } from '../common/StatusBadge';
+import { ViewRequestModal } from '../modals/ViewRequestModal';
 
 interface DashboardViewProps {
   user: User;
@@ -12,10 +13,18 @@ interface DashboardViewProps {
   onNewRequest: (type: RequestType) => void;
 }
 
+
 export const DashboardView = ({ user, requests, setTab, onNewRequest }: DashboardViewProps) => {
-  const userRequests = requests.filter(r => r.userId === user.id);
-  const pending = userRequests.filter(r => r.status === 'pending').length;
-  const approved = userRequests.filter(r => r.status === 'approved').length;
+  const [selectedRequest, setSelectedRequest] = React.useState<AppRequest | null>(null);
+  // If manager/admin, show all requests. If employee, show only theirs.
+
+  const displayRequests = user.role === 'employee' 
+    ? requests.filter(r => r.userId === user.id)
+    : requests;
+
+  const pending = displayRequests.filter(r => r.status === 'pending').length;
+  const approved = displayRequests.filter(r => r.status === 'approved').length;
+  const total = displayRequests.length;
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -59,7 +68,9 @@ export const DashboardView = ({ user, requests, setTab, onNewRequest }: Dashboar
             transition={{ delay: 0.3 }}
             className="text-brand-100 opacity-90"
           >
-            You have {pending} pending requests awaiting approval.
+            {user.role === 'employee' 
+              ? `You have ${pending} pending requests awaiting approval.`
+              : `There are ${pending} team requests awaiting your review.`}
           </motion.p>
           {user.role === 'employee' && (
             <div className="flex gap-3 pt-4">
@@ -99,10 +110,25 @@ export const DashboardView = ({ user, requests, setTab, onNewRequest }: Dashboar
         variants={itemVariants}
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
       >
-        <StatCard title="Pending Requests" value={pending.toString().padStart(2, '0')} icon={Clock} color="bg-white text-brand-600 border border-brand-200" />
-        <StatCard title="Active Team Leave" value={approved.toString().padStart(2, '0')} icon={CheckCircle2} color="bg-white text-text-main border border-brand-200" />
+        <StatCard 
+          title={user.role === 'employee' ? "My Pending" : "Team Pending"} 
+          value={pending.toString().padStart(2, '0')} 
+          icon={Clock} 
+          color="bg-white text-brand-600 border border-brand-200" 
+        />
+        <StatCard 
+          title={user.role === 'employee' ? "My Approved" : "Team Approved"} 
+          value={approved.toString().padStart(2, '0')} 
+          icon={CheckCircle2} 
+          color="bg-white text-text-main border border-brand-200" 
+        />
         <StatCard title="Remaining Leave" value="12 Days" icon={Calendar} color="bg-white text-text-main border border-brand-200" />
-        <StatCard title="Total Requests" value={userRequests.length} icon={FileText} color="bg-white text-brand-500 border border-brand-200" />
+        <StatCard 
+          title={user.role === 'employee' ? "Total Requests" : "Global Volume"} 
+          value={total.toString()} 
+          icon={FileText} 
+          color="bg-white text-brand-500 border border-brand-200" 
+        />
       </motion.div>
 
       {/* Recent Requests Section */}
@@ -111,21 +137,26 @@ export const DashboardView = ({ user, requests, setTab, onNewRequest }: Dashboar
           variants={itemVariants}
           className="flex items-center justify-between px-2"
         >
-          <h3 className="text-xl font-display font-bold text-text-heading">Recent Activities</h3>
-          <button onClick={() => setTab('requests')} className="text-brand-600 font-bold text-sm hover:underline">View All</button>
+          <h3 className="text-xl font-display font-bold text-text-heading">
+            {user.role === 'employee' ? 'My Recent Activities' : 'Team Activities'}
+          </h3>
+          {user.role !== 'manager' && (
+            <button onClick={() => setTab('requests')} className="text-brand-600 font-bold text-sm hover:underline">View All</button>
+          )}
         </motion.div>
         <motion.div 
           variants={itemVariants}
           className="grid gap-4"
         >
-          {userRequests.slice(0, 4).map((req, index) => (
+          {displayRequests.slice(0, 4).map((req, index) => (
             <motion.div 
               key={req.id} 
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.5 + (index * 0.1) }}
               whileHover={{ x: 5 }}
-              className="glass-card flex items-center justify-between hover:border-brand-500 group cursor-default"
+              onClick={() => setSelectedRequest(req)}
+              className="glass-card flex items-center justify-between hover:border-brand-500 group cursor-pointer"
             >
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-brand-50 flex items-center justify-center rounded-xl text-brand-500 group-hover:text-brand-600 transition-colors">
@@ -135,14 +166,16 @@ export const DashboardView = ({ user, requests, setTab, onNewRequest }: Dashboar
                   {req.type === 'permission' && <FileText className="w-6 h-6" />}
                 </div>
                 <div>
-                  <p className="font-bold text-text-heading capitalize leading-tight">{req.type} Request</p>
+                  <p className="font-bold text-text-heading capitalize leading-tight">
+                    {user.role === 'employee' ? `${req.type} Request` : `${req.userName} - ${req.type}`}
+                  </p>
                   <p className="text-xs text-text-muted mt-0.5">{new Date(req.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
                 </div>
               </div>
               <StatusBadge status={req.status} />
             </motion.div>
           ))}
-          {userRequests.length === 0 && (
+          {displayRequests.length === 0 && (
             <motion.div 
               variants={itemVariants}
               className="text-center py-12 text-text-muted bg-white rounded-2xl border border-dashed border-brand-200"
@@ -152,6 +185,10 @@ export const DashboardView = ({ user, requests, setTab, onNewRequest }: Dashboar
           )}
         </motion.div>
       </div>
+      <ViewRequestModal 
+        request={selectedRequest} 
+        onClose={() => setSelectedRequest(null)} 
+      />
     </motion.div>
   );
 };

@@ -4,20 +4,23 @@ import { Building2, ShieldCheck, UserCircle, Briefcase, Lock, User as UserIcon, 
 import { UserRole } from '../../types';
 
 interface LoginViewProps {
-  onLogin: (role: UserRole) => void;
+  onLogin: (username: string, password: string) => void;
 }
 
 export const LoginView = ({ onLogin }: LoginViewProps) => {
-  const [selectedRole, setSelectedRole] = useState<UserRole>('employee');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [showRoleDropdown, setShowRoleDropdown] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const roles: { id: UserRole; label: string; desc: string; icon: any }[] = [
-    { id: 'employee', label: 'Employee', desc: 'Manage your requests', icon: UserCircle },
-    { id: 'manager', label: 'Manager', desc: 'Approve team requests', icon: Briefcase },
-    { id: 'admin', label: 'Admin', desc: 'System administration', icon: ShieldCheck },
-  ];
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      await onLogin(username, password);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -29,13 +32,6 @@ export const LoginView = ({ onLogin }: LoginViewProps) => {
       }
     }
   };
-
-  const handleLoginSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onLogin(selectedRole);
-  };
-
-  const selectedRoleData = roles.find(r => r.id === selectedRole)!;
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center p-4 relative overflow-hidden">
@@ -147,72 +143,15 @@ export const LoginView = ({ onLogin }: LoginViewProps) => {
               </div>
             </div>
 
-            {/* Role Dropdown */}
-            <div className="space-y-1.5 relative">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Login As</label>
-              <button
-                type="button"
-                onClick={() => setShowRoleDropdown(!showRoleDropdown)}
-                className={`w-full flex items-center justify-between p-3 bg-slate-50 border-2 rounded-xl transition-all hover:bg-slate-100 ${showRoleDropdown ? 'border-brand-500/20 bg-white ring-4 ring-brand-500/5' : 'border-transparent'}`}
-              >
-                <div className="flex items-center gap-3 text-left">
-                  <div className="p-2 bg-white rounded-lg text-brand-600 shadow-sm border border-slate-100">
-                    <selectedRoleData.icon className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-sm text-slate-900 leading-none">{selectedRoleData.label}</p>
-                    <p className="text-[9px] text-slate-500 mt-0.5">{selectedRoleData.desc}</p>
-                  </div>
-                </div>
-                <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${showRoleDropdown ? 'rotate-180' : ''}`} />
-              </button>
-
-              <AnimatePresence>
-                {showRoleDropdown && (
-                  <>
-                    <div className="fixed inset-0 z-10" onClick={() => setShowRoleDropdown(false)} />
-                    <motion.div
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-slate-100 overflow-hidden z-20 p-1.5"
-                    >
-                      {roles.map((role) => (
-                        <button
-                          key={role.id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedRole(role.id);
-                            setShowRoleDropdown(false);
-                          }}
-                          className={`w-full flex items-center justify-between p-2.5 rounded-lg transition-all ${selectedRole === role.id ? 'bg-brand-50 text-brand-700' : 'hover:bg-slate-50 text-slate-600 hover:text-slate-900'}`}
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <div className={`p-1.5 rounded-md ${selectedRole === role.id ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
-                              <role.icon className="w-3.5 h-3.5" />
-                            </div>
-                            <div className="text-left">
-                              <p className="font-bold text-xs">{role.label}</p>
-                              <p className="text-[9px] opacity-70">{role.desc}</p>
-                            </div>
-                          </div>
-                          {selectedRole === role.id && <Check className="w-3.5 h-3.5" />}
-                        </button>
-                      ))}
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
-            </div>
-
             <motion.button
               whileHover={{ scale: 1.02, y: -2 }}
               whileTap={{ scale: 0.98 }}
               type="submit"
-              className="w-full py-3.5 bg-brand-600 text-white rounded-xl font-black text-sm shadow-xl shadow-brand-600/30 hover:bg-brand-700 transition-all mt-4 relative overflow-hidden group"
+              disabled={isLoading}
+              className={`w-full py-3.5 bg-brand-600 text-white rounded-xl font-black text-sm shadow-xl shadow-brand-600/30 hover:bg-brand-700 transition-all mt-4 relative overflow-hidden group ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
             >
-              <span className="relative z-10">Login to Dashboard</span>
-              <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+              <span className="relative z-10">{isLoading ? 'Authenticating...' : 'Login to Dashboard'}</span>
+              {!isLoading && <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />}
             </motion.button>
           </form>
 

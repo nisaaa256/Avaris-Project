@@ -75,7 +75,7 @@ export const Sidebar = ({ user, activeTab, setActiveTab, isSidebarOpen, handleLo
           />
           <SidebarItem
             icon={FileText}
-            label="My Requests"
+            label={user.role === 'employee' ? "My Requests" : "Request History"}
             active={activeTab === 'requests'}
             onClick={() => setActiveTab('requests')}
             collapsed={!isSidebarOpen}
