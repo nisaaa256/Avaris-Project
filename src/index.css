@@ -43,3 +43,11 @@
 .sidebar-active {
   @apply bg-white shadow-sm text-brand-600 font-bold;
 }
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
